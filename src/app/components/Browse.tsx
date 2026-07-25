@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatCurrency } from "../utils";
-import { ArrowLeft, MapPin, Heart, Shield, MessageCircle, ChevronDown, ChevronUp, Search, Check, X } from "lucide-react";
+import { ArrowLeft, MapPin, Heart, Shield, MessageCircle, ChevronDown, ChevronUp, Search, Check, X, SlidersHorizontal } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import {
   listingsApi,
@@ -8,10 +8,11 @@ import {
   type GccCountry,
   GCC_COUNTRIES,
   DEFAULT_GCC_CITY_LABEL,
-  DEFAULT_GCC_COUNTRY,
   citiesForCountry,
   isGccCountry,
   toBase,
+  LUXURY_CATEGORIES,
+  type ShoppingVertical,
 } from "@marketly/core";
 import { useApp } from "../AppContext";
 import { useAuth } from "../AuthContext";
@@ -21,6 +22,7 @@ import { HeaderControls } from "./HeaderControls";
 import { VerticalSwitcher } from "./VerticalSwitcher";
 import { Editable } from "./Editable";
 import { Banners } from "./Banners";
+import { ResponsiveSelect } from "./ResponsiveSelect";
 import { tOpt } from "../i18nLabel";
 
 type Props = {
@@ -294,6 +296,7 @@ export function Browse({ initial, onBack, onOpen }: Props) {
     setCity: setPreferredCity,
   } = useApp();
   const { user } = useAuth();
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [q, setQ] = useState(initial.q || "");
   const cat = initial.category || "";
   const [country, setCountry] = useState<GccCountry | "">(
@@ -309,45 +312,89 @@ export function Browse({ initial, onBack, onOpen }: Props) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const cityOptions = country ? citiesForCountry(country) : [];
+  const prevVertical = useRef(vertical);
+
+  // Vertical switcher is source of truth — clear city so Madinah default never hides coastal inventory
+  useEffect(() => {
+    if (prevVertical.current === vertical) return;
+    prevVertical.current = vertical;
+    setCity("");
+  }, [vertical]);
+
+  /** Prefer active vertical over URL category (avoids motors/cars vs yachts mismatch → 0 results) */
+  const categoryForQuery = useMemo(() => {
+    if (vertical !== "super") return undefined;
+    if (cat && (LUXURY_CATEGORIES as readonly string[]).includes(cat)) return cat;
+    if (cat === "motors") return "cars";
+    return cat || undefined;
+  }, [vertical, cat]);
+
+  const verticalForQuery: ShoppingVertical | undefined =
+    vertical === "super" && categoryForQuery && (LUXURY_CATEGORIES as readonly string[]).includes(categoryForQuery)
+      ? (categoryForQuery as ShoppingVertical)
+      : vertical;
+
+  const fetchBrowse = async () => {
+    const base = {
+      status: "approved" as const,
+      includeOwnPending: true,
+      userId: user?.id,
+      category: vertical !== "super" ? undefined : categoryForQuery,
+      q: q || undefined,
+      make: initial.make,
+      vertical: verticalForQuery,
+    };
+    let res = await listingsApi.listListings({
+      ...base,
+      location: city || undefined,
+      country: country || undefined,
+    });
+    if (!res.ok) return res;
+    // Location/country too tight for this vertical → show full vertical inventory
+    if (res.data.length === 0 && (city || country)) {
+      if (city) {
+        res = await listingsApi.listListings({ ...base, country: country || undefined });
+        if (res.ok && res.data.length > 0) {
+          setCity("");
+          return res;
+        }
+      }
+      if (country) {
+        res = await listingsApi.listListings({ ...base });
+        if (res.ok && res.data.length > 0) {
+          setCity("");
+          setCountry("");
+          return res;
+        }
+      }
+    }
+    return res;
+  };
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    listingsApi
-      .listListings({
-        status: "approved",
-        includeOwnPending: true,
-        userId: user?.id,
-        category: cat || undefined,
-        q: q || undefined,
-        location: city || undefined,
-        country: country || undefined,
-        make: initial.make,
-        vertical,
-      })
-      .then((res) => {
-        if (!alive) return;
-        if (res.ok) setListings(res.data);
-        setLoading(false);
-      });
+    fetchBrowse().then((res) => {
+      if (!alive) return;
+      if (res.ok) setListings(res.data);
+      setLoading(false);
+    });
     return () => {
       alive = false;
     };
-  }, [q, cat, city, country, user?.id, initial.make, vertical]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchBrowse closes over latest filters
+  }, [q, cat, city, country, user?.id, initial.make, vertical, categoryForQuery, verticalForQuery]);
 
-  useEffect(() => listingsApi.subscribeListings(() => {
-    listingsApi.listListings({
-      status: "approved",
-      includeOwnPending: true,
-      userId: user?.id,
-      category: cat || undefined,
-      q: q || undefined,
-      location: city || undefined,
-      country: country || undefined,
-      make: initial.make,
-      vertical,
-    }).then((res) => { if (res.ok) setListings(res.data); });
-  }), [q, cat, city, country, user?.id, initial.make, vertical]);
+  useEffect(
+    () =>
+      listingsApi.subscribeListings(() => {
+        fetchBrowse().then((res) => {
+          if (res.ok) setListings(res.data);
+        });
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [q, cat, city, country, user?.id, initial.make, vertical, categoryForQuery, verticalForQuery],
+  );
 
   const results: Listing[] = useMemo(() => {
     let list = [...listings];
@@ -414,33 +461,67 @@ export function Browse({ initial, onBack, onOpen }: Props) {
     }
   };
 
-  const luxuryTitleKey = ["boats", "yachts", "villas", "palaces", "chalets", "cars"].includes(cat)
-    ? `super.vertical.${cat}`
-    : "";
-  const catTitle = luxuryTitleKey
-    ? t(luxuryTitleKey)
-    : cat === "motors"
-      ? t("nav.motors")
-      : cat === "classifieds"
-        ? t("nav.classifieds")
-        : t("browse.title");
+  const titleVertical =
+    vertical !== "super"
+      ? vertical
+      : cat && (LUXURY_CATEGORIES as readonly string[]).includes(cat)
+        ? cat
+        : cat === "motors"
+          ? "cars"
+          : "";
+  const catTitle = titleVertical
+    ? t(`super.vertical.${titleVertical}`)
+    : cat === "classifieds"
+      ? t("nav.classifieds")
+      : t("browse.title");
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-3">
-          <button onClick={onBack} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><ArrowLeft className="size-5" /></button>
-          <h1 className="tracking-tight">{catTitle}</h1>
-          <div className="hidden md:block ms-2"><VerticalSwitcher size="sm" /></div>
-          <div className="ms-auto"><HeaderControls /></div>
+        <div className="max-w-7xl mx-auto px-4 py-2.5 sm:py-3 flex items-center gap-3">
+          <button onClick={onBack} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0" aria-label={t("common.back", { defaultValue: "Back" })}>
+            <ArrowLeft className="size-5 rtl:rotate-180" />
+          </button>
+          <h1 className="tracking-tight min-w-0 truncate flex-1">{catTitle}</h1>
+          <div className="ms-auto shrink-0"><HeaderControls /></div>
+        </div>
+        <div className="border-t border-slate-200 dark:border-slate-800">
+          <div className="max-w-7xl mx-auto px-4 py-2 overflow-x-auto no-scrollbar">
+            <VerticalSwitcher size="sm" className="w-full max-w-none" />
+          </div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-6 grid lg:grid-cols-[300px_1fr] gap-6">
-        <aside className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 h-fit lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
-          <div className="flex items-center justify-between mb-2">
+        {filtersOpen && (
+          <button
+            type="button"
+            className="lg:hidden fixed inset-0 z-[70] bg-black/45"
+            aria-label={t("common.close")}
+            onClick={() => setFiltersOpen(false)}
+          />
+        )}
+        <aside
+          className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 h-fit z-[80]
+            max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:max-h-[90dvh] max-lg:rounded-t-2xl max-lg:overflow-y-auto max-lg:shadow-2xl
+            ${filtersOpen ? "max-lg:block" : "max-lg:hidden"}
+            lg:block lg:rounded-2xl lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto`}
+        >
+          <div className="flex items-center justify-between mb-2 gap-2">
             <h3 className="tracking-tight">{t("browse.filters")}</h3>
-            <button onClick={clearAll} className="text-blue-600 hover:text-blue-700 text-sm">{t("browse.clear")}</button>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={clearAll} className="text-blue-600 hover:text-blue-700 text-sm">
+                {t("browse.clear")}
+              </button>
+              <button
+                type="button"
+                className="lg:hidden min-h-10 min-w-10 inline-flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
+                aria-label={t("common.close")}
+                onClick={() => setFiltersOpen(false)}
+              >
+                <X className="size-5" />
+              </button>
+            </div>
           </div>
 
           <Section title={t("browse.priceWithCurrency", { currency })}>
@@ -483,22 +564,23 @@ export function Browse({ initial, onBack, onOpen }: Props) {
 
           <Section title={t("browse.location")}>
             <div className="relative">
-              <MapPin className="absolute start-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-              <select
+              <MapPin className="absolute start-3 top-1/2 -translate-y-1/2 size-4 text-slate-400 pointer-events-none z-[1]" />
+              <ResponsiveSelect
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-full ps-9 pe-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 outline-none text-sm"
-              >
-                <option value="">{t("super.allLocations")}</option>
-                {(cityOptions.length
-                  ? cityOptions
-                  : GCC_COUNTRIES.flatMap((c) => citiesForCountry(c.code))
-                ).map((c) => (
-                  <option key={c.id} value={c.labelEn}>
-                    {t(`gcc.cities.${c.id}`, { defaultValue: c.labelEn })}
-                  </option>
-                ))}
-              </select>
+                onChange={setCity}
+                className="ps-9"
+                aria-label={t("browse.location")}
+                options={[
+                  { value: "", label: t("super.allLocations") },
+                  ...(cityOptions.length
+                    ? cityOptions
+                    : GCC_COUNTRIES.flatMap((c) => citiesForCountry(c.code))
+                  ).map((c) => ({
+                    value: c.labelEn,
+                    label: t(`gcc.cities.${c.id}`, { defaultValue: c.labelEn }),
+                  })),
+                ]}
+              />
             </div>
           </Section>
 
@@ -668,22 +750,46 @@ export function Browse({ initial, onBack, onOpen }: Props) {
           )}
 
           <Section title={tOpt(t, "Sort")}>
-            <select value={sort} onChange={(e) => setSort(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 outline-none text-sm">
-              <option value="newest">{t("browse.newest")}</option>
-              <option value="priceLow">{t("browse.priceLow")}</option>
-              <option value="priceHigh">{t("browse.priceHigh")}</option>
-            </select>
+            <ResponsiveSelect
+              value={sort}
+              onChange={setSort}
+              aria-label={tOpt(t, "Sort")}
+              options={[
+                { value: "newest", label: t("browse.newest") },
+                { value: "priceLow", label: t("browse.priceLow") },
+                { value: "priceHigh", label: t("browse.priceHigh") },
+              ]}
+            />
           </Section>
 
-          <div className="flex gap-2 mt-4 sticky bottom-0 bg-white dark:bg-slate-900 pt-3">
-            <button onClick={clearAll} className="px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700">{tr("Clear")}</button>
-            <button className="flex-1 px-4 py-2.5 rounded-lg bg-slate-900 dark:bg-white dark:text-slate-900 text-white">
-              Show {results.length} {cat === "motors" ? "cars" : "ads"}
+          <div className="flex gap-2 mt-4 sticky bottom-0 bg-white dark:bg-slate-900 pt-3 pb-[env(safe-area-inset-bottom,0px)]">
+            <button type="button" onClick={clearAll} className="min-h-11 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700">
+              {tr("Clear")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(false)}
+              className="flex-1 min-h-11 px-4 py-2.5 rounded-lg bg-slate-900 dark:bg-white dark:text-slate-900 text-white"
+            >
+              {t("browse.showResults", {
+                count: results.length,
+                defaultValue: `Show ${results.length} results`,
+              })}
             </button>
           </div>
         </aside>
 
-        <main>
+        <main className="min-w-0">
+          <div className="lg:hidden mb-4">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(true)}
+              className="min-h-11 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm font-medium"
+            >
+              <SlidersHorizontal className="size-4" />
+              {t("browse.filters")}
+            </button>
+          </div>
           <Banners placement="browse-top" className="mb-4" />
           <p className="text-slate-500 mb-4">
             <Editable id="browse.resultsPrefix" page="Browse" label="Results Label Prefix"
@@ -715,7 +821,9 @@ export function Browse({ initial, onBack, onOpen }: Props) {
                     <button onClick={() => onOpen(l.id)} className="block w-full text-start">
                       <div className="relative aspect-[4/3] overflow-hidden">
                         <ImageWithFallback src={l.img} alt={l.title} className="size-full object-cover" />
-                        <span className="absolute top-3 start-3 px-2 py-1 rounded-md bg-white/95 dark:bg-slate-900/95 text-xs">{t(`nav.${l.category}`)}</span>
+                        <span className="absolute top-3 start-3 px-2 py-1 rounded-md bg-white/95 dark:bg-slate-900/95 text-xs">
+                          {t(`super.vertical.${l.category}`, { defaultValue: String(l.category) })}
+                        </span>
                         {l.verified && (
                           <span className="absolute bottom-3 start-3 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-500 text-white text-xs">
                             <Shield className="size-3" /> {t("featured.verified")}

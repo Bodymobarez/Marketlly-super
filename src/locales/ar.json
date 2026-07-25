@@ -148,7 +148,8 @@
     "priceLow": "السعر: من الأقل",
     "priceHigh": "السعر: من الأعلى",
     "none": "لا توجد إعلانات مطابقة.",
-    "chat": "تواصل مع البائع"
+    "chat": "تواصل مع البائع",
+    "showResults": "عرض {{count}} نتيجة"
   },
   "auction": {
     "title": "مزادات سوبر لكشري",
@@ -347,6 +348,8 @@
     "postCarAuction": "نشر مزاد سيارة",
     "verifyNow": "وثّق الآن",
     "close": "إغلاق",
+    "done": "تم",
+    "menu": "القائمة",
     "toggleTheme": "تبديل المظهر",
     "english": "English",
     "arabic": "العربية",

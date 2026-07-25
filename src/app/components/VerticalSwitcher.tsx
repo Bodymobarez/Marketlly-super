@@ -25,7 +25,7 @@ export function VerticalSwitcher({ className = "", size = "md" }: Props) {
 
   return (
     <div
-      className={`inline-flex max-w-full items-center overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/80 p-0.5 ${className}`}
+      className={`flex max-w-full items-center overflow-x-auto no-scrollbar rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/80 p-0.5 ${className}`}
       role="tablist"
       aria-label={t("super.verticals")}
     >

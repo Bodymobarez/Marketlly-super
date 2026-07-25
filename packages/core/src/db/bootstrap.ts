@@ -6,7 +6,7 @@ import { fetchListingsFromDb, upsertListingsToDb } from "./listingsRepo";
 import { fetchAccountsFromDb, upsertAccountsToDb } from "./accountsRepo";
 import { fetchCartFromDb } from "./cartRepo";
 
-const LISTINGS_KEY = "marketly_listings_v4_gcc";
+const LISTINGS_KEY = "marketly_listings_v5_gcc";
 const ACCOUNTS_KEY = "marketly_accounts_v1";
 const CART_KEY = "marketly_cart_v3_gcc";
 const BOOT_FLAG = "marketly_db_bootstrapped_v1";

@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Search, MapPin, Bell, BookmarkCheck, Heart, MessageCircle, UserCog, X,
   Car, ArrowRight, Gavel, Ship, Anchor, Home, Landmark, Mountain, Smartphone,
   ChevronDown, User, Globe, FileText, BadgeCheck, Calendar, Wrench, Bookmark, Settings, LogOut, ShieldCheck,
-  ShoppingCart, Layers,
+  ShoppingCart, Layers, Menu,
 } from "lucide-react";
 import { useAuction, getStatus, useCountdown } from "../AuctionContext";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
@@ -12,12 +12,17 @@ import { HeroSlider } from "./HeroSlider";
 import { VerticalSwitcher } from "./VerticalSwitcher";
 import { MotorsMenu } from "./MotorsMenu";
 import { ClassifiedsMenu } from "./ClassifiedsMenu";
+import { MobileSheet } from "./MobileSheet";
+import { ResponsiveSelect } from "./ResponsiveSelect";
 import { useApp } from "../AppContext";
 import {
   matchesVertical,
   GCC_COUNTRIES,
   citiesForCountry,
   isGccCountry,
+  LUXURY_CATEGORIES,
+  type LuxuryCategory,
+  type ShoppingVertical,
 } from "@marketly/core";
 import { useAuth } from "../AuthContext";
 import { useTranslation } from "react-i18next";
@@ -50,7 +55,13 @@ const navCats = [
   { id: "auction", label: "Cars Auction", badge: "LIVE" },
 ];
 
-const searchTabs = ["All", "Yachts", "Villas", "Cars", "Boats"];
+/** Search card "Searching In" tabs — All = multi-source; others = category filter */
+type SearchTabId = "all" | LuxuryCategory;
+const SEARCH_TABS: SearchTabId[] = ["all", "yachts", "villas", "cars", "boats", "palaces", "chalets"];
+
+function isLuxuryCategory(value: string): value is LuxuryCategory {
+  return (LUXURY_CATEGORIES as readonly string[]).includes(value);
+}
 
 // ─── Live Auctions Section ────────────────────────────────────────────────────
 
@@ -64,14 +75,24 @@ function AuctionCountdown({ endTime }: { endTime: number }) {
   return <span className={`font-mono text-xs tabular-nums ${urgent ? "text-red-400 font-bold" : "text-white/70"}`}>{parts}</span>;
 }
 
-function LiveAuctionsSection({ onNavigate }: { onNavigate: (page: string, params?: Record<string, string>) => void }) {
+function LiveAuctionsSection({
+  onNavigate,
+  category,
+}: {
+  onNavigate: (page: string, params?: Record<string, string>) => void;
+  category?: LuxuryCategory | null;
+}) {
   const { t } = useTranslation();
   const tr = (s: string) => tOpt(t, s);
   const { currency } = useApp();
   const { auctions } = useAuction();
-  // Prefer one live lot per Super Luxury category for hub variety
+  // Prefer one live lot per Super Luxury category for hub variety (or filter by active tab)
   const liveAuctions = (() => {
-    const live = auctions.filter((a) => getStatus(a) === "live");
+    const live = auctions.filter((a) => {
+      if (getStatus(a) !== "live") return false;
+      if (!category) return true;
+      return (a.category ?? "cars") === category;
+    });
     const picked: typeof live = [];
     const seen = new Set<string>();
     for (const a of live) {
@@ -154,13 +175,31 @@ function LiveAuctionsSection({ onNavigate }: { onNavigate: (page: string, params
 export function Landing({ onNavigate, user, onLogout }: Props) {
   const { t } = useTranslation();
   const tr = (s: string) => tOpt(t, s);
-  const { lang, vertical, cartCount, country, city, currency, setCountry, setCity } = useApp();
+  const { lang, vertical, cartCount, country, city, currency, setCountry, setCity, setVertical } = useApp();
   const { can, user: session } = useAuth();
   const [showBanner, setShowBanner] = useState(true);
-  const [tab, setTab] = useState("All");
+  const [tab, setTab] = useState<SearchTabId>(() =>
+    isLuxuryCategory(vertical) ? vertical : "all",
+  );
   const [motorsOpen, setMotorsOpen] = useState(false);
   const [classifiedsOpen, setClassifiedsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [mobileSheet, setMobileSheet] = useState<"motors" | "classifieds" | "geo" | "profile" | null>(null);
+
+  // Keep Searching In tab in sync with VerticalSwitcher (and vice versa via selectTab)
+  useEffect(() => {
+    if (vertical === "super") setTab("all");
+    else if (isLuxuryCategory(vertical)) setTab(vertical);
+  }, [vertical]);
+
+  const selectTab = (id: SearchTabId) => {
+    setTab(id);
+    const nextVertical: ShoppingVertical = id === "all" ? "super" : id;
+    if (vertical !== nextVertical) setVertical(nextVertical);
+  };
+
+  const activeCategory: LuxuryCategory | null = tab === "all" ? null : tab;
 
   const categoryAllowed = (id: string) => {
     if (!session || session.role === "admin") return true;
@@ -179,6 +218,10 @@ export function Landing({ onNavigate, user, onLogout }: Props) {
   const allListings = getListings().filter((l) =>
     matchesVertical(l.vertical, vertical, String(l.category)),
   );
+  const featuredListings = allListings.slice(0, 4);
+  const visiblePopular = activeCategory
+    ? popular.filter((p) => p.category === activeCategory)
+    : popular;
   const recent = recentIds.map((id) => allListings.find((l) => l.id === id)).filter(Boolean) as typeof allListings;
 
   const pickCountry = (code: string) => {
@@ -191,23 +234,12 @@ export function Landing({ onNavigate, user, onLogout }: Props) {
       ...(city ? { location: city } : {}),
       country,
     };
-    // Super Luxury: multi-source search; category tabs also browse filtered inventory
-    if (tab === "All" || vertical !== "super") {
+    // All → multi-source search (no category). Category tab → browse with category + geo.
+    if (tab === "all") {
       onNavigate("search", { q: query, ...geo });
       return;
     }
-    const tabCat: Record<string, string> = {
-      Yachts: "yachts",
-      Villas: "villas",
-      Cars: "cars",
-      Boats: "boats",
-    };
-    const cat = tabCat[tab] || "";
-    if (cat) {
-      onNavigate("browse", { q: query, category: cat, ...geo });
-      return;
-    }
-    onNavigate("search", { q: query, ...geo });
+    onNavigate("browse", { q: query, category: tab, ...geo });
   };
 
   return (
@@ -235,52 +267,29 @@ export function Landing({ onNavigate, user, onLogout }: Props) {
         </div>
       )}
 
-      <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-        <div className="w-full px-6 h-16 flex items-center gap-6">
-          <button onClick={() => onNavigate("landing")} className="flex items-center gap-2">
-            <span className="tracking-tight bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent text-[32px] font-[Agu_Display] font-bold">{t("brand")}</span>
+      <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 sticky top-0 z-40">
+        {/* Row 1 — Brand + language/theme + primary CTA */}
+        <div className="w-full px-3 sm:px-6 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            className="md:hidden min-h-11 min-w-11 inline-flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+            aria-label={t("common.menu", { defaultValue: "Menu" })}
+            onClick={() => setMobileNavOpen(true)}
+          >
+            <Menu className="size-5" />
           </button>
 
-          <div className="hidden md:flex items-center gap-1.5 text-slate-700 dark:text-slate-200 px-2 py-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800">
-            <MapPin className="size-4 text-slate-400 shrink-0" />
-            <select
-              value={country}
-              onChange={(e) => pickCountry(e.target.value)}
-              className="bg-transparent outline-none max-w-[7.5rem]"
-              aria-label={t("gcc.country")}
-            >
-              {GCC_COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {t(`gcc.countries.${c.code}`)}
-                </option>
-              ))}
-            </select>
-            <select
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="bg-transparent outline-none max-w-[9rem]"
-              aria-label={t("browse.location")}
-            >
-              {cityOptions.map((c) => (
-                <option key={c.id} value={c.labelEn}>
-                  {t(`gcc.cities.${c.id}`, { defaultValue: c.labelEn })}
-                </option>
-              ))}
-            </select>
-            <span className="text-xs font-semibold text-blue-600 tabular-nums ms-1" dir="ltr" title={t("gcc.currency")}>
-              {currency}
+          <button onClick={() => onNavigate("landing")} className="flex items-center gap-2 min-w-0 shrink-0">
+            <span className="tracking-tight bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent text-2xl sm:text-[32px] font-[Agu_Display] font-bold truncate">
+              {t("brand")}
             </span>
-          </div>
+          </button>
 
-          <div className="hidden md:block">
-            <VerticalSwitcher size="sm" />
-          </div>
-
-          <nav className="hidden lg:flex items-center gap-5 text-slate-600 dark:text-slate-300 ms-auto">
-            <button onClick={() => onNavigate("search")} className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white text-blue-600 dark:text-blue-400">
+          <nav className="hidden xl:flex items-center gap-4 text-sm text-slate-600 dark:text-slate-300 ms-4 min-w-0 flex-1 justify-end">
+            <button onClick={() => onNavigate("search")} className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white text-blue-600 dark:text-blue-400 whitespace-nowrap">
               <Layers className="size-4" /> {t("super.searchNav")}
             </button>
-            <button onClick={() => onNavigate("cart")} className="relative flex items-center gap-1 hover:text-slate-900 dark:hover:text-white">
+            <button onClick={() => onNavigate("cart")} className="relative flex items-center gap-1 hover:text-slate-900 dark:hover:text-white whitespace-nowrap">
               <ShoppingCart className="size-4" /> {t("super.cart")}
               {cartCount > 0 && (
                 <span className="absolute -top-2 -end-3 size-4 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center">
@@ -288,16 +297,16 @@ export function Landing({ onNavigate, user, onLogout }: Props) {
                 </span>
               )}
             </button>
-            <button onClick={() => toast(t("common.noNotifications"))} className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white">
+            <button onClick={() => toast(t("common.noNotifications"))} className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white whitespace-nowrap">
               <Bell className="size-4" /> {t("common.notifications")}
             </button>
-            <button onClick={() => onNavigate("browse")} className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white">
+            <button onClick={() => onNavigate("browse")} className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white whitespace-nowrap">
               <BookmarkCheck className="size-4" /> {t("common.mySearches")}
             </button>
-            <button onClick={() => onNavigate("browse")} className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white">
+            <button onClick={() => onNavigate("browse")} className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white whitespace-nowrap">
               <Heart className="size-4" /> {t("common.favorites")}
             </button>
-            <button onClick={() => toast(t("common.openingChats"))} className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white">
+            <button onClick={() => toast(t("common.openingChats"))} className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white whitespace-nowrap">
               <MessageCircle className="size-4" /> {t("common.chats")}
             </button>
             {user ? (
@@ -386,32 +395,91 @@ export function Landing({ onNavigate, user, onLogout }: Props) {
                 )}
               </div>
             ) : (
-              <button onClick={() => onNavigate("auth")} className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white">
+              <button onClick={() => onNavigate("auth")} className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white whitespace-nowrap">
                 <UserCog className="size-4" /> {t("common.login")}
               </button>
             )}
           </nav>
 
-          <div className="flex items-center gap-2 ms-auto lg:ms-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 ms-auto xl:ms-0 shrink-0">
             <HeaderControls />
             {session && can("canPostAuction") && (session.role === "dealer" || session.role === "admin") && (
               <button
                 onClick={() => onNavigate("post")}
-                className="px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950/30 whitespace-nowrap text-sm font-medium inline-flex items-center gap-1.5"
+                className="min-h-10 px-2.5 sm:px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950/30 whitespace-nowrap text-sm font-medium inline-flex items-center gap-1.5"
               >
-                <Gavel className="size-3.5" /> {t("common.postCarAuction")}
+                <Gavel className="size-3.5" />
+                <span className="hidden sm:inline">{t("common.postCarAuction")}</span>
               </button>
             )}
             {(!session || can("canPostAds")) && (
-              <button onClick={() => onNavigate("post")} className="px-4 py-2 rounded-lg bg-[#2563eb] text-white hover:bg-[#1d4ed8] whitespace-nowrap">
-                <Editable id="landing.placeAdBtn" page="Landing" label="Place Your Ad Button" defaultValue={t("common.placeYourAd")} />
+              <button
+                onClick={() => onNavigate("post")}
+                className="min-h-10 px-3 sm:px-4 py-2 rounded-lg bg-[#2563eb] text-white hover:bg-[#1d4ed8] whitespace-nowrap text-sm"
+              >
+                <span className="sm:hidden">{t("nav.post")}</span>
+                <span className="hidden sm:inline">
+                  <Editable id="landing.placeAdBtn" page="Landing" label="Place Your Ad Button" defaultValue={t("common.placeYourAd")} />
+                </span>
               </button>
             )}
           </div>
         </div>
 
-        <div className="border-t border-slate-200 dark:border-slate-800 relative">
-          <div className="w-full px-6 h-12 flex items-center gap-6 text-slate-700 dark:text-slate-200 relative">
+        {/* Row 2 — Geo + VerticalSwitcher */}
+        <div className="border-t border-slate-200 dark:border-slate-800">
+          <div className="w-full px-3 sm:px-6 py-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <div className="hidden md:flex items-center gap-1.5 text-slate-700 dark:text-slate-200 px-1 py-0.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/80 min-w-0 shrink-0">
+              <MapPin className="size-4 text-slate-400 shrink-0" />
+              <ResponsiveSelect
+                value={country}
+                onChange={pickCountry}
+                aria-label={t("gcc.country")}
+                className="!min-h-9 !py-1.5 !rounded-lg border-0 bg-transparent dark:bg-transparent max-w-[7.5rem] pe-7"
+                options={GCC_COUNTRIES.map((c) => ({
+                  value: c.code,
+                  label: t(`gcc.countries.${c.code}`),
+                }))}
+              />
+              <ResponsiveSelect
+                value={city}
+                onChange={setCity}
+                aria-label={t("browse.location")}
+                className="!min-h-9 !py-1.5 !rounded-lg border-0 bg-transparent dark:bg-transparent max-w-[9rem] pe-7"
+                options={cityOptions.map((c) => ({
+                  value: c.labelEn,
+                  label: t(`gcc.cities.${c.id}`, { defaultValue: c.labelEn }),
+                }))}
+              />
+              <span className="text-xs font-semibold text-blue-600 tabular-nums ms-1" dir="ltr" title={t("gcc.currency")}>
+                {currency}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setMobileSheet("geo")}
+              className="md:hidden w-full inline-flex items-center gap-2 min-h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-200"
+              aria-label={t("gcc.country")}
+            >
+              <MapPin className="size-4 shrink-0 text-slate-400" />
+              <span className="truncate flex-1 text-start">{t(`gcc.countries.${country}`)}</span>
+              <span className="text-xs text-slate-500 truncate max-w-[40%]">{city}</span>
+              <span className="text-blue-600 font-semibold tabular-nums shrink-0" dir="ltr">
+                {currency}
+              </span>
+              <ChevronDown className="size-4 shrink-0 text-slate-400" />
+            </button>
+
+            <div className="min-w-0 flex-1 overflow-x-auto no-scrollbar">
+              <VerticalSwitcher size="sm" className="w-full max-w-none" />
+            </div>
+          </div>
+        </div>
+
+        {/* Row 3 — Category nav (desktop mega / mobile chips) */}
+        <div className="border-t border-slate-200 dark:border-slate-800 relative hidden md:block">
+          <div className="w-full px-6 h-12 flex items-center gap-6 text-slate-700 dark:text-slate-200 relative overflow-x-auto no-scrollbar">
             {visibleNavCats.map((c) => {
               const isMotors = c.id === "motors";
               const isClassifieds = c.id === "classifieds";
@@ -420,7 +488,7 @@ export function Landing({ onNavigate, user, onLogout }: Props) {
               return (
                 <div
                   key={c.id}
-                  className="relative"
+                  className="relative shrink-0"
                   onMouseEnter={() => {
                     if (isMotors) setMotorsOpen(true);
                     if (isClassifieds) setClassifiedsOpen(true);
@@ -431,29 +499,271 @@ export function Landing({ onNavigate, user, onLogout }: Props) {
                   }}
                 >
                   <button
+                    type="button"
                     onClick={() => {
-                      if (isAuction) { onNavigate("auction"); return; }
+                      if (isAuction) {
+                        onNavigate("auction");
+                        return;
+                      }
                       onNavigate("browse", { category: c.id });
                     }}
                     className={`flex items-center gap-2 whitespace-nowrap hover:text-blue-600 h-12 ${open ? "text-[#2563eb]" : ""} ${isAuction ? "text-red-600 hover:text-red-700 font-semibold" : ""}`}
                   >
                     {isAuction && <span className="size-1.5 rounded-full bg-red-600 animate-pulse" />}
                     {isAuction ? t("nav.auction") : tOpt(t, c.label)}
-                    {c.badge && !isAuction && <span className="text-xs px-1.5 py-0.5 rounded bg-[#2563eb] text-white">{c.badge}</span>}
-                    {isAuction && <span className="text-xs px-1.5 py-0.5 rounded bg-red-600 text-white">{t("auction.statusLive")}</span>}
+                    {c.badge && !isAuction && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-[#2563eb] text-white">{c.badge}</span>
+                    )}
+                    {isAuction && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-red-600 text-white">
+                        {t("auction.statusLive")}
+                      </span>
+                    )}
                   </button>
                   {isMotors && motorsOpen && (
-                    <MotorsMenu onPick={(p) => onNavigate("browse", p)} onClose={() => setMotorsOpen(false)} />
+                    <MotorsMenu
+                      variant="dropdown"
+                      onPick={(p) => onNavigate("browse", p)}
+                      onClose={() => setMotorsOpen(false)}
+                    />
                   )}
                   {isClassifieds && classifiedsOpen && (
-                    <ClassifiedsMenu onPick={(p) => onNavigate("browse", p)} onClose={() => setClassifiedsOpen(false)} />
+                    <ClassifiedsMenu
+                      variant="dropdown"
+                      onPick={(p) => onNavigate("browse", p)}
+                      onClose={() => setClassifiedsOpen(false)}
+                    />
                   )}
                 </div>
               );
             })}
           </div>
         </div>
+
+        <div className="md:hidden border-t border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2 px-3 py-2 overflow-x-auto no-scrollbar">
+            {visibleNavCats.map((c) => {
+              const isMotors = c.id === "motors";
+              const isClassifieds = c.id === "classifieds";
+              const isAuction = c.id === "auction";
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    if (isAuction) {
+                      onNavigate("auction");
+                      return;
+                    }
+                    if (isMotors) {
+                      setMobileSheet("motors");
+                      return;
+                    }
+                    if (isClassifieds) {
+                      setMobileSheet("classifieds");
+                      return;
+                    }
+                    onNavigate("browse", { category: c.id });
+                  }}
+                  className={`shrink-0 min-h-10 px-3 rounded-full text-sm border inline-flex items-center gap-1.5 ${
+                    isAuction
+                      ? "border-red-200 text-red-600 bg-red-50 dark:bg-red-950/30 dark:border-red-900 font-semibold"
+                      : "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+                  }`}
+                >
+                  {isAuction && <Gavel className="size-3.5" />}
+                  {isAuction ? t("nav.auction") : tOpt(t, c.label)}
+                  {(isMotors || isClassifieds) && <ChevronDown className="size-3.5 opacity-60" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </header>
+
+      <MobileSheet
+        open={mobileSheet === "geo"}
+        onClose={() => setMobileSheet(null)}
+        title={t("gcc.country")}
+        size="bottom"
+      >
+        <div className="space-y-4 pb-2">
+          <div>
+            <label className="text-xs text-slate-500 mb-1.5 block">{t("gcc.country")}</label>
+            <ResponsiveSelect
+              value={country}
+              onChange={pickCountry}
+              aria-label={t("gcc.country")}
+              options={GCC_COUNTRIES.map((c) => ({
+                value: c.code,
+                label: t(`gcc.countries.${c.code}`),
+              }))}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-slate-500 mb-1.5 block">{t("browse.location")}</label>
+            <ResponsiveSelect
+              value={city}
+              onChange={setCity}
+              aria-label={t("browse.location")}
+              options={cityOptions.map((c) => ({
+                value: c.labelEn,
+                label: t(`gcc.cities.${c.id}`, { defaultValue: c.labelEn }),
+              }))}
+            />
+          </div>
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            {t("gcc.currency")}:{" "}
+            <span className="font-semibold text-blue-600" dir="ltr">
+              {currency}
+            </span>
+          </p>
+          <button
+            type="button"
+            onClick={() => setMobileSheet(null)}
+            className="w-full min-h-11 rounded-xl bg-blue-600 text-white font-medium"
+          >
+            {t("common.done", { defaultValue: "Done" })}
+          </button>
+        </div>
+      </MobileSheet>
+
+      <MobileSheet
+        open={mobileSheet === "motors"}
+        onClose={() => setMobileSheet(null)}
+        title={tOpt(t, "Motors")}
+        size="full"
+      >
+        <MotorsMenu
+          variant="sheet"
+          onPick={(p) => onNavigate("browse", p)}
+          onClose={() => setMobileSheet(null)}
+        />
+      </MobileSheet>
+
+      <MobileSheet
+        open={mobileSheet === "classifieds"}
+        onClose={() => setMobileSheet(null)}
+        title={tOpt(t, "Classifieds")}
+        size="full"
+      >
+        <ClassifiedsMenu
+          variant="sheet"
+          onPick={(p) => onNavigate("browse", p)}
+          onClose={() => setMobileSheet(null)}
+        />
+      </MobileSheet>
+
+      <MobileSheet
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        title={t("brand")}
+        size="full"
+      >
+        <div className="space-y-1 pb-6">
+          <button
+            type="button"
+            className="w-full min-h-12 px-3 rounded-xl text-start hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-3"
+            onClick={() => {
+              setMobileNavOpen(false);
+              setMobileSheet("geo");
+            }}
+          >
+            <MapPin className="size-4 text-slate-400" />
+            <span className="flex-1 truncate">
+              {t(`gcc.countries.${country}`)} · {city}
+            </span>
+            <span className="text-blue-600 text-sm font-semibold" dir="ltr">
+              {currency}
+            </span>
+          </button>
+          <button
+            type="button"
+            className="w-full min-h-12 px-3 rounded-xl text-start hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-3"
+            onClick={() => {
+              setMobileNavOpen(false);
+              onNavigate("search");
+            }}
+          >
+            <Layers className="size-4" /> {t("super.searchNav")}
+          </button>
+          <button
+            type="button"
+            className="w-full min-h-12 px-3 rounded-xl text-start hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-3"
+            onClick={() => {
+              setMobileNavOpen(false);
+              onNavigate("cart");
+            }}
+          >
+            <ShoppingCart className="size-4" /> {t("super.cart")}
+            {cartCount > 0 && (
+              <span className="ms-auto text-xs bg-blue-600 text-white rounded-full px-2 py-0.5">{cartCount}</span>
+            )}
+          </button>
+          <button
+            type="button"
+            className="w-full min-h-12 px-3 rounded-xl text-start hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-3"
+            onClick={() => {
+              setMobileNavOpen(false);
+              onNavigate("browse");
+            }}
+          >
+            <Heart className="size-4" /> {t("common.favorites")}
+          </button>
+          <button
+            type="button"
+            className="w-full min-h-12 px-3 rounded-xl text-start hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-3 text-red-600"
+            onClick={() => {
+              setMobileNavOpen(false);
+              onNavigate("auction");
+            }}
+          >
+            <Gavel className="size-4" /> {t("nav.auction")}
+          </button>
+          {user ? (
+            <>
+              {user.role === "admin" && (
+                <button
+                  type="button"
+                  className="w-full min-h-12 px-3 rounded-xl text-start bg-blue-600 text-white flex items-center gap-3"
+                  onClick={() => {
+                    setMobileNavOpen(false);
+                    onNavigate("admin");
+                  }}
+                >
+                  <ShieldCheck className="size-4" /> {t("common.adminPanel")}
+                </button>
+              )}
+              <button
+                type="button"
+                className="w-full min-h-12 px-3 rounded-xl text-start hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-3"
+                onClick={() => {
+                  setMobileNavOpen(false);
+                  onLogout();
+                  toast.success(tOpt(t, "Signed out"));
+                }}
+              >
+                <LogOut className="size-4" /> {t("common.signOut")}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="w-full min-h-12 px-3 rounded-xl text-start hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-3"
+              onClick={() => {
+                setMobileNavOpen(false);
+                onNavigate("auth");
+              }}
+            >
+              <UserCog className="size-4" /> {t("common.login")}
+            </button>
+          )}
+          <div className="pt-4">
+            <p className="text-xs text-slate-500 mb-2 px-1">{t("super.verticals")}</p>
+            <VerticalSwitcher size="sm" className="w-full" />
+          </div>
+        </div>
+      </MobileSheet>
 
       <HeroSlider onNavigate={onNavigate} />
 
@@ -461,53 +771,75 @@ export function Landing({ onNavigate, user, onLogout }: Props) {
 
       <section className="max-w-7xl mx-auto px-4 pt-6">
         <p className="text-center text-slate-600 dark:text-slate-300 text-sm mb-3">{t(`super.tagline.${vertical}`)}</p>
-        <div className="flex justify-center md:hidden mb-4">
-          <VerticalSwitcher size="sm" />
-        </div>
         <div className="max-w-5xl mx-auto bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-3 sm:p-4">
-          <div className="flex items-center gap-2 mb-3 overflow-x-auto">
+          <div className="flex items-center gap-2 mb-3 overflow-x-auto" role="tablist" aria-label={t("common.searchingIn")}>
             <span className="text-slate-500 whitespace-nowrap pe-2">{t("common.searchingIn")}</span>
-            {searchTabs.map((s) => (
+            {SEARCH_TABS.map((s) => (
               <button
                 key={s}
-                onClick={() => setTab(s)}
+                type="button"
+                role="tab"
+                aria-selected={tab === s}
+                onClick={() => selectTab(s)}
                 className={`px-3 py-1.5 rounded-full whitespace-nowrap transition ${tab === s ? "bg-[#2563eb] text-white" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
               >
-                {tOpt(t, s)}
+                {s === "all" ? t("common.tabAll") : t(`super.vertical.${s}`)}
               </button>
             ))}
           </div>
-          <form onSubmit={(e) => { e.preventDefault(); search(); }} className="flex items-center gap-2 border border-slate-200 dark:border-slate-700 rounded-lg p-1">
-            <Search className="size-5 text-slate-400 ms-2" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t("common.searchAnything")}
-              className="flex-1 outline-none py-2 bg-transparent"
-            />
-            <button type="submit" className="px-6 py-2.5 rounded-md bg-[#2563eb] text-white hover:bg-[#1d4ed8]">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              search();
+            }}
+            className="flex flex-col sm:flex-row sm:items-center gap-2 border border-slate-200 dark:border-slate-700 rounded-xl p-2"
+          >
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <Search className="size-5 text-slate-400 ms-1 shrink-0" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t("common.searchAnything")}
+                className="flex-1 min-w-0 outline-none py-2.5 bg-transparent text-base sm:text-sm"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full sm:w-auto min-h-11 px-6 py-2.5 rounded-lg bg-[#2563eb] text-white hover:bg-[#1d4ed8] shrink-0"
+            >
               <Editable id="landing.searchBtn" page="Landing" label="Search Button" defaultValue={t("hero.search")} />
             </button>
           </form>
         </div>
       </section>
 
-      <LiveAuctionsSection onNavigate={onNavigate} />
+      <LiveAuctionsSection onNavigate={onNavigate} category={activeCategory} />
 
       <section className="max-w-7xl mx-auto px-4 mt-8 mb-12">
         <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-          <h2 className="tracking-tight">{t("common.popularCategories")}</h2>
+          <h2 className="tracking-tight">
+            {t("common.popularCategories")}
+            {activeCategory && (
+              <span className="ms-2 text-sm font-normal text-blue-600">
+                · {t(`super.vertical.${activeCategory}`)}
+              </span>
+            )}
+          </h2>
           <button
             type="button"
-            onClick={() => onNavigate("search")}
+            onClick={() =>
+              activeCategory
+                ? onNavigate("browse", { category: activeCategory })
+                : onNavigate("search")
+            }
             className="text-sm text-blue-600 hover:underline inline-flex items-center gap-1"
           >
             <Layers className="size-3.5" /> {t("super.searchNav")}
           </button>
         </div>
-        {vertical !== "super" && (
+        {featuredListings.length > 0 && (
           <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {allListings.slice(0, 4).map((l) => (
+            {featuredListings.map((l) => (
               <button
                 key={l.id}
                 type="button"
@@ -525,11 +857,23 @@ export function Landing({ onNavigate, user, onLogout }: Props) {
             ))}
           </div>
         )}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-8">
-          {popular.map((p) => (
-            <div key={p.id}>
+        <div className={`grid gap-x-6 gap-y-8 ${
+          visiblePopular.length === 1
+            ? "grid-cols-1 max-w-sm"
+            : "grid-cols-2 md:grid-cols-3 lg:grid-cols-6"
+        }`}>
+          {visiblePopular.map((p) => {
+            const highlighted = !activeCategory || p.category === activeCategory;
+            return (
+            <div
+              key={p.id}
+              className={highlighted && activeCategory ? "rounded-xl ring-2 ring-blue-500/40 bg-blue-50/40 dark:bg-blue-950/20 p-3 -m-1" : undefined}
+            >
               <button
-                onClick={() => onNavigate("browse", { category: p.category })}
+                onClick={() => {
+                  selectTab(p.category as LuxuryCategory);
+                  onNavigate("browse", { category: p.category });
+                }}
                 className="flex items-center gap-2 mb-3 text-start hover:text-amber-800 transition"
               >
                 <p.icon className="size-5 text-amber-800 shrink-0" />
@@ -562,7 +906,8 @@ export function Landing({ onNavigate, user, onLogout }: Props) {
                 </li>
               </ul>
             </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -651,7 +996,7 @@ export function Landing({ onNavigate, user, onLogout }: Props) {
         </div>
 
         <div className="bg-slate-50 dark:bg-slate-900">
-          <div className="max-w-7xl mx-auto px-4 py-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 text-slate-600 dark:text-slate-300">
+          <div className="max-w-7xl mx-auto px-4 py-10 hidden md:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 text-slate-600 dark:text-slate-300">
             {[
               { title: "Company", items: ["About Us", "Advertising", "Careers", "Legal Hub", "Sitemap"] },
               { title: "gcc.region", items: ["Madinah", "Riyadh", "Jeddah", "Dubai", "Doha", "Kuwait City", "Manama", "Muscat"] },

@@ -147,7 +147,8 @@
     "priceLow": "Price: low to high",
     "priceHigh": "Price: high to low",
     "none": "No listings match your filters.",
-    "chat": "Chat with seller"
+    "chat": "Chat with seller",
+    "showResults": "Show {{count}} results"
   },
   "auction": {
     "title": "Super Luxury Auctions",
@@ -346,6 +347,8 @@
     "postCarAuction": "Post car auction",
     "verifyNow": "Verify Now",
     "close": "Close",
+    "done": "Done",
+    "menu": "Menu",
     "toggleTheme": "Toggle theme",
     "english": "English",
     "arabic": "العربية",

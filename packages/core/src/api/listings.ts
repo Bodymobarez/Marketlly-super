@@ -2,16 +2,38 @@ import { fail, ok, withLatency, type ApiResult } from "./client";
 import { seededListings } from "../mocks/seed";
 import { readJson, writeJson } from "../storage";
 import type { CreateListingInput, Listing, ListingFilters, ListingStatus } from "../types";
-import { matchesVertical } from "../verticals";
+import { LUXURY_CATEGORIES, matchesVertical } from "../verticals";
 import { deleteListingFromDb, isDatabaseConfigured, upsertListingToDb } from "../db";
 
 /** Bumped when catalog / GCC geo seed changes so clients re-seed inventory */
-const KEY = "marketly_listings_v4_gcc";
+const KEY = "marketly_listings_v5_gcc";
 const listeners = new Set<() => void>();
+
+/** Re-seed when local cache is empty, thin, or missing Super Luxury categories */
+function needsReseed(stored: Listing[]): boolean {
+  if (!stored.length) return true;
+  const seedLen = seededListings().length;
+  if (stored.length < Math.max(20, Math.floor(seedLen * 0.55))) return true;
+  const cats = new Set(stored.map((l) => String(l.category).toLowerCase()));
+  for (const c of LUXURY_CATEGORIES) {
+    if (c === "cars") {
+      if (!cats.has("cars") && !cats.has("motors")) return true;
+      continue;
+    }
+    if (!cats.has(c)) return true;
+  }
+  // Madinah launch default must have marine + estate inventory
+  const madinah = stored.filter((l) => l.location.toLowerCase().includes("madinah"));
+  const madinahCats = new Set(madinah.map((l) => String(l.category).toLowerCase()));
+  for (const c of ["yachts", "boats", "villas", "cars"] as const) {
+    if (!madinahCats.has(c)) return true;
+  }
+  return false;
+}
 
 function load(): Listing[] {
   const stored = readJson<Listing[] | null>(KEY, null);
-  if (!stored || !Array.isArray(stored) || stored.length === 0) {
+  if (!stored || !Array.isArray(stored) || needsReseed(stored)) {
     const seed = seededListings();
     writeJson(KEY, seed);
     return seed;

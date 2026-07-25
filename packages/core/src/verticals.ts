@@ -129,8 +129,10 @@ export function matchesVertical(
     return true;
   }
   // Legacy motors listings surface under Cars
-  if (active === "cars" && (cat === "motors" || itemVertical === undefined)) {
-    return cat === "motors" || cat === "cars";
+  if (active === "cars" && (cat === "motors" || cat === "cars")) {
+    return true;
   }
+  // Legacy category-only rows (no vertical field) match by category name
+  if (!itemVertical && cat === active) return true;
   return false;
 }

@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft, Gavel, Clock, Eye, Heart, Search, SlidersHorizontal,
-  Flame, CheckCircle, XCircle, ChevronDown, Calendar, TrendingUp, Zap,
+  Flame, CheckCircle, XCircle, Calendar, TrendingUp, Zap,
 } from "lucide-react";
 import {
   useAuction, getStatus, useCountdown, auctionSpecSummary, AUCTION_CATEGORIES,
@@ -10,6 +10,7 @@ import {
 } from "../AuctionContext";
 import { useApp } from "../AppContext";
 import { HeaderControls } from "./HeaderControls";
+import { ResponsiveSelect } from "./ResponsiveSelect";
 import { formatCurrency } from "../utils";
 
 type Props = { onBack: () => void; onOpen: (id: string) => void };
@@ -251,16 +252,16 @@ export function AuctionList({ onBack, onOpen }: Props) {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-4">
-          <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:hover:text-white transition">
-            <ArrowLeft className="size-4" /><span className="hidden sm:inline text-sm">{t("auction.back")}</span>
+        <div className="max-w-7xl mx-auto px-4 py-2.5 sm:py-3 flex items-center gap-3">
+          <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:hover:text-white transition shrink-0" aria-label={t("auction.back")}>
+            <ArrowLeft className="size-4 rtl:rotate-180" /><span className="hidden sm:inline text-sm">{t("auction.back")}</span>
           </button>
-          <div className="flex items-center gap-2.5">
-            <div className="size-9 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="size-9 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center shrink-0">
               <Gavel className="size-5 text-white" />
             </div>
-            <div>
-              <p className="font-bold tracking-tight leading-tight">{t("auction.title")}</p>
+            <div className="min-w-0">
+              <p className="font-bold tracking-tight leading-tight truncate">{t("auction.title")}</p>
               {liveCount > 0 && (
                 <p className="text-xs text-red-600 font-medium flex items-center gap-1">
                   <span className="size-1.5 rounded-full bg-red-600 animate-pulse inline-block" />
@@ -269,7 +270,7 @@ export function AuctionList({ onBack, onOpen }: Props) {
               )}
             </div>
           </div>
-          <div className="ms-auto flex items-center gap-3"><HeaderControls /></div>
+          <div className="ms-auto flex items-center gap-3 shrink-0"><HeaderControls /></div>
         </div>
       </header>
 
@@ -309,61 +310,57 @@ export function AuctionList({ onBack, onOpen }: Props) {
           </div>
 
           {filtersOpen && (
-            <div className="flex flex-wrap gap-3 pt-1">
-              <div className="flex items-center gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div className="space-y-1.5">
                 <label className="text-xs text-slate-500 uppercase tracking-wide">{t("auction.category")}</label>
-                <div className="relative">
-                  <select
-                    value={category}
-                    onChange={(e) => {
-                      setCategory(e.target.value as AuctionCategory | "");
-                      setMake("");
-                    }}
-                    className="appearance-none ps-3 pe-8 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm outline-none focus:border-blue-600"
-                  >
-                    <option value="">{t("auction.allCategories")}</option>
-                    {AUCTION_CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{t(`auction.cat.${c}`)}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 size-3.5 text-slate-400 pointer-events-none" />
-                </div>
+                <ResponsiveSelect
+                  value={category}
+                  onChange={(v) => {
+                    setCategory(v as AuctionCategory | "");
+                    setMake("");
+                  }}
+                  aria-label={t("auction.category")}
+                  options={[
+                    { value: "", label: t("auction.allCategories") },
+                    ...AUCTION_CATEGORIES.map((c) => ({
+                      value: c,
+                      label: t(`auction.cat.${c}`),
+                    })),
+                  ]}
+                />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="space-y-1.5">
                 <label className="text-xs text-slate-500 uppercase tracking-wide">{t("auction.make")}</label>
-                <div className="relative">
-                  <select
-                    value={make}
-                    onChange={(e) => setMake(e.target.value === allMakesLabel ? "" : e.target.value)}
-                    className="appearance-none ps-3 pe-8 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm outline-none focus:border-blue-600"
-                  >
-                    {makesInView.map((m) => <option key={m} value={m === allMakesLabel ? "" : m}>{m}</option>)}
-                  </select>
-                  <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 size-3.5 text-slate-400 pointer-events-none" />
-                </div>
+                <ResponsiveSelect
+                  value={make}
+                  onChange={(v) => setMake(v === allMakesLabel ? "" : v)}
+                  aria-label={t("auction.make")}
+                  options={makesInView.map((m) => ({
+                    value: m === allMakesLabel ? "" : m,
+                    label: m,
+                  }))}
+                />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="space-y-1.5">
                 <label className="text-xs text-slate-500 uppercase tracking-wide">{t("auction.sort")}</label>
-                <div className="relative">
-                  <select
-                    value={sort}
-                    onChange={(e) => setSort(e.target.value as typeof sort)}
-                    className="appearance-none ps-3 pe-8 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm outline-none focus:border-blue-600"
-                  >
-                    <option value="ending">{t("auction.endingSoonest")}</option>
-                    <option value="starting">{t("auction.startingSoonest")}</option>
-                    <option value="bids">{t("auction.mostBids")}</option>
-                    <option value="price">{t("auction.highestBid")}</option>
-                  </select>
-                  <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 size-3.5 text-slate-400 pointer-events-none" />
-                </div>
+                <ResponsiveSelect
+                  value={sort}
+                  onChange={(v) => setSort(v as typeof sort)}
+                  aria-label={t("auction.sort")}
+                  options={[
+                    { value: "ending", label: t("auction.endingSoonest") },
+                    { value: "starting", label: t("auction.startingSoonest") },
+                    { value: "bids", label: t("auction.mostBids") },
+                    { value: "price", label: t("auction.highestBid") },
+                  ]}
+                />
               </div>
             </div>
           )}
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 w-fit">
+        <div className="flex gap-1 p-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 w-full sm:w-fit overflow-x-auto no-scrollbar">
           {tabs.map(({ key, label }) => {
             const count = key === "all" ? auctions.length
               : key === "live" ? auctions.filter((a) => getStatus(a) === "live").length
