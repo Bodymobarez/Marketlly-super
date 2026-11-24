@@ -1925,18 +1925,19 @@
     "welcomeBack": "Welcome back"
   },
   "gcc": {
-    "region": "GCC",
+    "region": "GCC & Egypt",
     "country": "Country",
     "currency": "Currency",
-    "allCountries": "All GCC",
-    "startingFromMadinah": "Starting from Madinah · expanding across the GCC",
+    "allCountries": "All markets",
+    "startingFromMadinah": "Starting from Madinah · GCC & Egypt",
     "countries": {
       "SA": "Saudi Arabia",
       "AE": "UAE",
       "KW": "Kuwait",
       "BH": "Bahrain",
       "QA": "Qatar",
-      "OM": "Oman"
+      "OM": "Oman",
+      "EG": "Egypt"
     },
     "cities": {
       "madinah": "Madinah",
@@ -1966,7 +1967,17 @@
       "muscat": "Muscat",
       "salalah": "Salalah",
       "qurayyat": "Qurayyat",
-      "jabal-akhdar": "Al Jabal Al Akhdar"
+      "jabal-akhdar": "Al Jabal Al Akhdar",
+      "cairo": "Cairo",
+      "new-cairo": "New Cairo",
+      "sheikh-zayed": "Sheikh Zayed",
+      "new-capital": "New Administrative Capital",
+      "alexandria": "Alexandria",
+      "north-coast": "North Coast",
+      "el-gouna": "El Gouna",
+      "ain-sokhna": "Ain Sokhna",
+      "sharm-el-sheikh": "Sharm El Sheikh",
+      "hurghada": "Hurghada"
     }
   }
 }

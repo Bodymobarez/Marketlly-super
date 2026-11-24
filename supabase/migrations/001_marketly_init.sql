@@ -9,7 +9,7 @@ create table if not exists public.listings (
   title        text not null,
   price        numeric(14, 2) not null,
   location     text not null,
-  country      text check (country in ('AE', 'SA', 'KW', 'BH', 'QA', 'OM')),
+  country      text check (country is null or country in ('AE', 'SA', 'KW', 'BH', 'QA', 'OM', 'EG')),
   category     text not null,
   make         text,
   model        text,

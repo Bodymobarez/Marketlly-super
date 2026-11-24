@@ -28,7 +28,9 @@ On boot, `bootstrapDatabase()`:
 | Accounts | `accounts`    | Read on boot; signup/admin changes → upsert   |
 | Cart     | `cart_lines`  | Read on boot; every cart mutation replaces    |
 
-Prices are stored in **SAR** (base currency). The UI converts via `gcc/money` when the user changes country.
+Prices are stored in **SAR** (base currency). The UI converts via `gcc/money` when the user changes country (incl. **EGP** for Egypt).
+
+Markets: SA · AE · KW · BH · QA · OM · **EG** — apply `002_add_egypt.sql` if the DB was created before Egypt support.
 
 ## Without `.env`
 

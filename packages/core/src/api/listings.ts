@@ -5,11 +5,11 @@ import type { CreateListingInput, Listing, ListingFilters, ListingStatus } from 
 import { LUXURY_CATEGORIES, matchesVertical } from "../verticals";
 import { deleteListingFromDb, isDatabaseConfigured, upsertListingToDb } from "../db";
 
-/** Bumped when catalog / GCC geo seed changes so clients re-seed inventory */
-const KEY = "marketly_listings_v5_gcc";
+/** Bumped when Egypt market + geo seed expands */
+const KEY = "marketly_listings_v6_egypt";
 const listeners = new Set<() => void>();
 
-/** Re-seed when local cache is empty, thin, or missing Super Luxury categories */
+/** Re-seed when local cache is empty, thin, or missing Super Luxury / Egypt */
 function needsReseed(stored: Listing[]): boolean {
   if (!stored.length) return true;
   const seedLen = seededListings().length;
@@ -28,6 +28,8 @@ function needsReseed(stored: Listing[]): boolean {
   for (const c of ["yachts", "boats", "villas", "cars"] as const) {
     if (!madinahCats.has(c)) return true;
   }
+  // Egypt market must be present
+  if (!stored.some((l) => l.country === "EG")) return true;
   return false;
 }
 

@@ -280,7 +280,7 @@ export function Landing({ onNavigate, user, onLogout }: Props) {
           </button>
 
           <button onClick={() => onNavigate("landing")} className="flex items-center gap-2 min-w-0 shrink-0">
-            <span className="tracking-tight bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent text-2xl sm:text-[32px] font-[Agu_Display] font-bold truncate">
+            <span className="font-display tracking-tight bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent text-[1.75rem] sm:text-[2.15rem] font-semibold truncate">
               {t("brand")}
             </span>
           </button>
@@ -769,11 +769,11 @@ export function Landing({ onNavigate, user, onLogout }: Props) {
 
       <Banners placement="landing-top" className="max-w-7xl mx-auto px-4 pt-4" />
 
-      <section className="max-w-7xl mx-auto px-4 pt-6">
-        <p className="text-center text-slate-600 dark:text-slate-300 text-sm mb-3">{t(`super.tagline.${vertical}`)}</p>
+      <section className="max-w-7xl mx-auto px-3 sm:px-4 pt-4 sm:pt-6">
+        <p className="text-center text-slate-600 dark:text-slate-300 text-sm mb-3 px-1 leading-relaxed">{t(`super.tagline.${vertical}`)}</p>
         <div className="max-w-5xl mx-auto bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-3 sm:p-4">
-          <div className="flex items-center gap-2 mb-3 overflow-x-auto" role="tablist" aria-label={t("common.searchingIn")}>
-            <span className="text-slate-500 whitespace-nowrap pe-2">{t("common.searchingIn")}</span>
+          <div className="flex items-center gap-2 mb-3 overflow-x-auto no-scrollbar -mx-0.5 px-0.5" role="tablist" aria-label={t("common.searchingIn")}>
+            <span className="text-slate-500 whitespace-nowrap pe-2 text-xs sm:text-sm shrink-0">{t("common.searchingIn")}</span>
             {SEARCH_TABS.map((s) => (
               <button
                 key={s}
@@ -999,7 +999,7 @@ export function Landing({ onNavigate, user, onLogout }: Props) {
           <div className="max-w-7xl mx-auto px-4 py-10 hidden md:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 text-slate-600 dark:text-slate-300">
             {[
               { title: "Company", items: ["About Us", "Advertising", "Careers", "Legal Hub", "Sitemap"] },
-              { title: "gcc.region", items: ["Madinah", "Riyadh", "Jeddah", "Dubai", "Doha", "Kuwait City", "Manama", "Muscat"] },
+              { title: "gcc.region", items: ["Madinah", "Riyadh", "Jeddah", "Dubai", "Cairo", "North Coast", "El Gouna", "Alexandria"] },
               { title: "gcc.allCountries", items: ["Saudi Arabia", "UAE", "Kuwait", "Bahrain", "Qatar", "Oman"] },
               { title: "Get Social", items: ["Facebook", "X", "Youtube", "Instagram"] },
               { title: "Support", items: ["Help", "Contact Us", "Call Us"] },

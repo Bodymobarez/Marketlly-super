@@ -16,6 +16,8 @@ export const DEMO_FX_FROM_SAR: Record<GccCurrency, number> = {
   KWD: 0.0827,
   BHD: 0.1013,
   OMR: 0.1027,
+  /** Approx. demo — ~13.5 EGP per 1 SAR */
+  EGP: 13.5,
 };
 
 const FRACTION_DIGITS: Record<GccCurrency, number> = {
@@ -25,6 +27,7 @@ const FRACTION_DIGITS: Record<GccCurrency, number> = {
   KWD: 3,
   BHD: 3,
   OMR: 3,
+  EGP: 0,
 };
 
 export function convertPrice(

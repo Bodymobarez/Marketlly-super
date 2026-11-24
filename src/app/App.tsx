@@ -22,7 +22,9 @@ function Shell() {
     <>
       <Toaster theme={theme} position="top-center" richColors />
       <LiveEditIndicator />
-      <div className={showTabs ? MOBILE_TAB_PAD : undefined}>
+      <div
+        className={`font-sans-app min-h-dvh ${showTabs ? MOBILE_TAB_PAD : ""}`}
+      >
         <AppRoutes />
       </div>
       <MobileBottomNav />

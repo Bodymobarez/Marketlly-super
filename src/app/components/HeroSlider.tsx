@@ -111,7 +111,7 @@ export function HeroSlider({ onNavigate }: Props) {
 
   return (
     <section
-      className="relative w-full min-h-[min(88vh,760px)] h-[min(88vh,760px)] overflow-hidden bg-[#0c1220] text-white"
+      className="relative w-full min-h-[min(72dvh,640px)] h-[min(72dvh,640px)] sm:min-h-[min(82dvh,720px)] sm:h-[min(82dvh,720px)] lg:min-h-[min(88vh,760px)] lg:h-[min(88vh,760px)] overflow-hidden bg-[#0c1220] text-white"
       aria-roledescription="carousel"
       aria-labelledby={labelId}
       onMouseEnter={() => setPaused(true)}
@@ -154,27 +154,27 @@ export function HeroSlider({ onNavigate }: Props) {
       })}
 
       {/* Content — one composition */}
-      <div className="relative z-[2] flex h-full flex-col justify-end px-5 pb-16 pt-24 sm:px-10 sm:pb-20 lg:px-16">
+      <div className="relative z-[2] flex h-full flex-col justify-end px-4 pb-14 pt-20 sm:px-10 sm:pb-20 lg:px-16">
         <div
           className={`max-w-3xl transition-all duration-500 ease-out ${
             entered ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
           }`}
         >
-          <p className="font-[Agu_Display] text-[clamp(2.25rem,6vw,4.25rem)] font-bold leading-none tracking-tight text-white drop-shadow-sm">
+          <p className="font-display text-[clamp(2rem,7vw,4.25rem)] font-semibold leading-[0.95] tracking-tight text-white drop-shadow-sm">
             {t("brand")}
           </p>
-          <h1 className="mt-4 font-[Cairo] text-[clamp(1.35rem,3.2vw,2.35rem)] font-bold leading-tight tracking-tight text-white">
+          <h1 className="mt-3 sm:mt-4 text-[clamp(1.2rem,3.5vw,2.25rem)] font-semibold leading-snug tracking-tight text-white">
             {title}
           </h1>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/80 sm:text-base">
+          <p className="mt-2.5 sm:mt-3 max-w-xl text-[0.9375rem] leading-relaxed text-white/80 sm:text-base">
             {sub}
           </p>
 
-          <div className="mt-7 flex flex-wrap items-center gap-3">
+          <div className="mt-5 sm:mt-7 flex flex-col xs:flex-row flex-wrap items-stretch xs:items-center gap-2.5 sm:gap-3">
             <button
               type="button"
               onClick={openSlide}
-              className="group inline-flex items-center gap-2 bg-amber-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
+              className="group inline-flex min-h-11 items-center justify-center gap-2 bg-amber-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
             >
               {ctaLabel}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180 rtl:group-hover:-translate-x-0.5" />
@@ -182,7 +182,7 @@ export function HeroSlider({ onNavigate }: Props) {
             <button
               type="button"
               onClick={() => onNavigate("browse")}
-              className="inline-flex items-center gap-2 border border-white/35 bg-white/5 px-5 py-2.5 text-sm font-medium text-white/95 backdrop-blur-sm transition hover:border-white/60 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70"
+              className="inline-flex min-h-11 items-center justify-center gap-2 border border-white/35 bg-white/5 px-5 py-2.5 text-sm font-medium text-white/95 backdrop-blur-sm transition hover:border-white/60 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70"
             >
               {t("heroSlider.browseAll")}
             </button>

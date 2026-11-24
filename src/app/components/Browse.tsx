@@ -216,7 +216,7 @@ function Section({ title, children, defaultOpen = true }: { title: string; child
   return (
     <div className="border-b border-slate-100 dark:border-slate-800 py-4">
       <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between mb-3">
-        <span className="tracking-tight font-bold font-[Akaya_Kanadaka] text-[20px]">{title}</span>
+        <span className="tracking-tight font-semibold font-display text-[1.125rem]">{title}</span>
         {open ? <ChevronUp className="size-4 text-slate-400" /> : <ChevronDown className="size-4 text-slate-400" />}
       </button>
       {open && children}
@@ -588,7 +588,7 @@ export function Browse({ initial, onBack, onOpen }: Props) {
             <>
               <div className="py-4 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="tracking-tight font-[Abhaya_Libre_ExtraBold]">
+                  <span className="tracking-tight font-display font-semibold">
                     <span className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-1.5 py-0.5 rounded">Marketly</span> {tr("inspected cars")}
                   </span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-600 text-white">{t("common.newBadge")}</span>

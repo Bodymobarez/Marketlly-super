@@ -127,7 +127,7 @@ export function MobileBottomNav() {
                     )}
                   </span>
                   <span
-                    className={`text-[10px] leading-tight truncate max-w-full ${
+                    className={`text-[10px] sm:text-[11px] leading-tight truncate max-w-full tracking-wide ${
                       active ? "font-semibold" : "font-medium"
                     }`}
                   >

@@ -15,7 +15,7 @@ export type ProductSearchQuery = {
   q: string;
   vertical?: ShoppingVertical;
   location?: string;
-  /** GCC country filter (AE/SA/KW/BH/QA/OM) */
+  /** Market country filter (AE/SA/KW/BH/QA/OM/EG) */
   country?: GccCountry;
   limit?: number;
   /** Restrict to specific provider ids; omit = all registered */

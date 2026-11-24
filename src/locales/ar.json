@@ -1926,18 +1926,19 @@
     "welcomeBack": "مرحباً بعودتك"
   },
   "gcc": {
-    "region": "دول الخليج",
+    "region": "الخليج ومصر",
     "country": "الدولة",
     "currency": "العملة",
-    "allCountries": "كل الخليج",
-    "startingFromMadinah": "نبدأ من المدينة المنورة · ونغطي دول الخليج",
+    "allCountries": "كل الأسواق",
+    "startingFromMadinah": "نبدأ من المدينة المنورة · الخليج ومصر",
     "countries": {
       "SA": "السعودية",
       "AE": "الإمارات",
       "KW": "الكويت",
       "BH": "البحرين",
       "QA": "قطر",
-      "OM": "عُمان"
+      "OM": "عُمان",
+      "EG": "مصر"
     },
     "cities": {
       "madinah": "المدينة المنورة",
@@ -1967,7 +1968,17 @@
       "muscat": "مسقط",
       "salalah": "صلالة",
       "qurayyat": "قريات",
-      "jabal-akhdar": "الجبل الأخضر"
+      "jabal-akhdar": "الجبل الأخضر",
+      "cairo": "القاهرة",
+      "new-cairo": "القاهرة الجديدة",
+      "sheikh-zayed": "الشيخ زايد",
+      "new-capital": "العاصمة الإدارية",
+      "alexandria": "الإسكندرية",
+      "north-coast": "الساحل الشمالي",
+      "el-gouna": "الجونة",
+      "ain-sokhna": "العين السخنة",
+      "sharm-el-sheikh": "شرم الشيخ",
+      "hurghada": "الغردقة"
     }
   }
 }

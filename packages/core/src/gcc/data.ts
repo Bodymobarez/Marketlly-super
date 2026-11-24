@@ -1,8 +1,8 @@
-/** First-party GCC geo/reference — 6 markets only; no heavy country libs needed. */
+/** First-party geo/reference — GCC + Egypt (luxury MENA markets). */
 
-export type GccCountry = "AE" | "SA" | "KW" | "BH" | "QA" | "OM";
+export type GccCountry = "AE" | "SA" | "KW" | "BH" | "QA" | "OM" | "EG";
 
-export type GccCurrency = "AED" | "SAR" | "KWD" | "BHD" | "QAR" | "OMR";
+export type GccCurrency = "AED" | "SAR" | "KWD" | "BHD" | "QAR" | "OMR" | "EGP";
 
 export type GccCity = {
   /** Stable English slug used in filters / storage */
@@ -101,6 +101,17 @@ export const GCC_COUNTRIES: GccCountryMeta[] = [
     locale: "ar-OM",
     flag: "🇴🇲",
   },
+  {
+    code: "EG",
+    labelEn: "Egypt",
+    labelAr: "مصر",
+    currency: "EGP",
+    currencyLabelEn: "Egyptian Pound",
+    currencyLabelAr: "جنيه مصري",
+    dialCode: "+20",
+    locale: "ar-EG",
+    flag: "🇪🇬",
+  },
 ];
 
 export const GCC_COUNTRY_CODES: GccCountry[] = GCC_COUNTRIES.map((c) => c.code);
@@ -141,6 +152,17 @@ export const GCC_CITIES: GccCity[] = [
   { id: "salalah", country: "OM", labelEn: "Salalah", labelAr: "صلالة", priority: 26 },
   { id: "qurayyat", country: "OM", labelEn: "Qurayyat", labelAr: "قريات", priority: 27 },
   { id: "jabal-akhdar", country: "OM", labelEn: "Al Jabal Al Akhdar", labelAr: "الجبل الأخضر", priority: 28 },
+  // Egypt — luxury hubs
+  { id: "cairo", country: "EG", labelEn: "Cairo", labelAr: "القاهرة", priority: 9 },
+  { id: "new-cairo", country: "EG", labelEn: "New Cairo", labelAr: "القاهرة الجديدة", priority: 29 },
+  { id: "sheikh-zayed", country: "EG", labelEn: "Sheikh Zayed", labelAr: "الشيخ زايد", priority: 30 },
+  { id: "new-capital", country: "EG", labelEn: "New Administrative Capital", labelAr: "العاصمة الإدارية", priority: 31 },
+  { id: "alexandria", country: "EG", labelEn: "Alexandria", labelAr: "الإسكندرية", priority: 32 },
+  { id: "north-coast", country: "EG", labelEn: "North Coast", labelAr: "الساحل الشمالي", priority: 33 },
+  { id: "el-gouna", country: "EG", labelEn: "El Gouna", labelAr: "الجونة", priority: 34 },
+  { id: "ain-sokhna", country: "EG", labelEn: "Ain Sokhna", labelAr: "العين السخنة", priority: 35 },
+  { id: "sharm-el-sheikh", country: "EG", labelEn: "Sharm El Sheikh", labelAr: "شرم الشيخ", priority: 36 },
+  { id: "hurghada", country: "EG", labelEn: "Hurghada", labelAr: "الغردقة", priority: 37 },
 ];
 
 export function isGccCountry(value: string | null | undefined): value is GccCountry {

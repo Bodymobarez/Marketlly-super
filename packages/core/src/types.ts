@@ -68,7 +68,7 @@ export type Listing = {
   /** Amount in BASE_CURRENCY (SAR) — convert for display via gcc/money */
   price: number;
   location: string;
-  /** ISO GCC country code (AE/SA/KW/BH/QA/OM) */
+  /** ISO market country code (AE/SA/KW/BH/QA/OM/EG) */
   country?: GccCountry;
   category: ListingCategory;
   make?: string;

@@ -58,7 +58,7 @@ const DEFAULT_DESIGN: Design = {
 };
 
 const DEFAULT_TYPOGRAPHY: Typography = {
-  family: "Inter",
+  family: "DM Sans",
   scale: 16,
   weight: 400,
 };
@@ -67,22 +67,22 @@ export const PRESETS: ThemePreset[] = [
   {
     name: "Marketly Classic",
     design: { primary: "#2563eb", accent: "#7c3aed", radius: 12, heroOverlay: 50, density: "comfortable" },
-    typography: { family: "Inter", scale: 16, weight: 400 },
+    typography: { family: "DM Sans", scale: 16, weight: 400 },
   },
   {
     name: "Sunset",
     design: { primary: "#ea580c", accent: "#dc2626", radius: 18, heroOverlay: 45, density: "comfortable" },
-    typography: { family: "Plus Jakarta Sans", scale: 16, weight: 400 },
+    typography: { family: "DM Sans", scale: 16, weight: 400 },
   },
   {
     name: "Forest",
     design: { primary: "#16a34a", accent: "#0d9488", radius: 10, heroOverlay: 55, density: "comfortable" },
-    typography: { family: "Inter", scale: 15, weight: 400 },
+    typography: { family: "IBM Plex Sans Arabic", scale: 15, weight: 400 },
   },
   {
     name: "Royal",
     design: { primary: "#7e22ce", accent: "#1e40af", radius: 16, heroOverlay: 60, density: "spacious" },
-    typography: { family: "Manrope", scale: 16, weight: 500 },
+    typography: { family: "Cormorant Garamond", scale: 17, weight: 500 },
   },
   {
     name: "Mono",
@@ -92,11 +92,19 @@ export const PRESETS: ThemePreset[] = [
   {
     name: "Coral",
     design: { primary: "#e11d48", accent: "#f59e0b", radius: 20, heroOverlay: 50, density: "comfortable" },
-    typography: { family: "Manrope", scale: 16, weight: 500 },
+    typography: { family: "DM Sans", scale: 16, weight: 500 },
   },
 ];
 
-const FONT_FAMILIES = ["Inter", "Manrope", "Plus Jakarta Sans", "Poppins", "Nunito", "JetBrains Mono", "system-ui"];
+const FONT_FAMILIES = [
+  "DM Sans",
+  "IBM Plex Sans Arabic",
+  "Cormorant Garamond",
+  "Manrope",
+  "Plus Jakarta Sans",
+  "JetBrains Mono",
+  "system-ui",
+];
 
 const DEFAULT_BANNERS: Banner[] = [
   {
@@ -219,8 +227,13 @@ export function ElementsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = document.documentElement;
     root.style.fontSize = `${typography.scale}px`;
-    root.style.fontFamily = `"${typography.family}", system-ui, sans-serif`;
-    root.style.setProperty("--ml-font", `"${typography.family}", system-ui, sans-serif`);
+    // Keep bilingual stack: admin-picked family first, then professional fallbacks
+    const stack =
+      typography.family === "IBM Plex Sans Arabic" || typography.family === "Cormorant Garamond"
+        ? `"${typography.family}", "DM Sans", system-ui, sans-serif`
+        : `"${typography.family}", "IBM Plex Sans Arabic", "DM Sans", system-ui, sans-serif`;
+    root.style.fontFamily = stack;
+    root.style.setProperty("--ml-font", stack);
     root.style.setProperty("--ml-weight", String(typography.weight));
   }, [typography]);
 
